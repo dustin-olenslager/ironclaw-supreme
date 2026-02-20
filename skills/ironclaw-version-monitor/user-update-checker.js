@@ -231,17 +231,17 @@ function formatUserUpdateMessage(report) {
     }
 
     // Action required
-    msg += `⚡ *Action Required:*\n`;
+    msg += `⚡ *How to Update:*\n`;
+    msg += `💬 Just tell IronClaw: *"Update yourself"*\n`;
+    msg += `   IronClaw will pull the latest and restart automatically.\n\n`;
+    msg += `📋 Or manually:\n`;
     msg += '```\n';
     msg += 'cd /home/node/.openclaw/workspace\n';
-    msg += 'git pull origin main\n';
+    msg += 'bash scripts/self-update.sh --restart\n';
     msg += '```\n';
 
     if (urgency === 'critical' || urgency === 'high') {
-        msg += `\n⚠️ *Recommended: restart after updating*\n`;
-        msg += '```\n';
-        msg += 'systemctl restart ironclaw-supreme\n';
-        msg += '```\n';
+        msg += `\n⚠️ *${urgency === 'critical' ? 'Security update — apply ASAP' : 'Major update — restart recommended'}*\n`;
     }
 
     // Quality assurance footer
@@ -373,10 +373,7 @@ async function checkForUserUpdate() {
             log('📱 Sending user update notification...');
 
             try {
-                const TelegramNotifier = require('./telegram-notifier.js');
                 const message = formatUserUpdateMessage(report);
-                // Use the raw sendTelegramMessage via the notifier's internal mechanism
-                // We add our own sendUserUpdateAlert to the notifier
                 await sendViaTelegram(message);
                 markAlerted(origin.commit);
                 log('✅ User update notification sent');
