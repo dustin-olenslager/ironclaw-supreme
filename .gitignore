@@ -93,3 +93,10 @@ package-lock.json
 
 # Local iOS signing overrides
 apps/ios/LocalSigning.xcconfig
+
+# Personal workspace files (do not commit)
+MEMORY.md
+TOOLS.md
+SOUL.md
+HEARTBEAT.md
+memory/
