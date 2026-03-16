@@ -1,7 +1,20 @@
 import type { OpenClawConfig } from "../config/config.js";
-import { loadConfig } from "../config/config.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
-import { ensureGatewayStartupAuth } from "../gateway/startup-auth.js";
+
+let configModulePromise: Promise<typeof import("../config/config.js")> | undefined;
+let gatewayStartupAuthModulePromise:
+  | Promise<typeof import("../gateway/startup-auth.js")>
+  | undefined;
+
+async function loadConfigModule() {
+  configModulePromise ??= import("../config/config.js");
+  return await configModulePromise;
+}
+
+async function loadGatewayStartupAuthModule() {
+  gatewayStartupAuthModulePromise ??= import("../gateway/startup-auth.js");
+  return await gatewayStartupAuthModulePromise;
+}
 
 export type BrowserControlAuth = {
   token?: string;
@@ -67,6 +80,7 @@ export async function ensureBrowserControlAuth(params: {
   }
 
   // Re-read latest config to avoid racing with concurrent config writers.
+  const { loadConfig } = await loadConfigModule();
   const latestCfg = loadConfig();
   const latestAuth = resolveBrowserControlAuth(latestCfg, env);
   if (latestAuth.token || latestAuth.password) {
@@ -82,6 +96,7 @@ export async function ensureBrowserControlAuth(params: {
     return { auth: latestAuth };
   }
 
+  const { ensureGatewayStartupAuth } = await loadGatewayStartupAuthModule();
   const ensured = await ensureGatewayStartupAuth({
     cfg: latestCfg,
     env,

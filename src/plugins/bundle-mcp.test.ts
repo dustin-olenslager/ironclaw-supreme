@@ -9,6 +9,10 @@ import { clearPluginManifestRegistryCache } from "./manifest-registry.js";
 
 const tempDirs: string[] = [];
 
+async function canonicalizePathForAssertion(filePath: string): Promise<string> {
+  return await fs.realpath(filePath).catch(() => path.resolve(filePath));
+}
+
 async function createTempDir(prefix: string): Promise<string> {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
   tempDirs.push(dir);
@@ -72,11 +76,16 @@ describe("loadEnabledBundleMcpConfig", () => {
         workspaceDir,
         cfg: config,
       });
-      const resolvedServerPath = await fs.realpath(serverPath);
+      const loadedServerArgs = loaded.config.mcpServers.bundleProbe?.args;
+      const loadedServerPath = Array.isArray(loadedServerArgs) ? loadedServerArgs[0] : undefined;
 
       expect(loaded.diagnostics).toEqual([]);
       expect(loaded.config.mcpServers.bundleProbe?.command).toBe("node");
-      expect(loaded.config.mcpServers.bundleProbe?.args).toEqual([resolvedServerPath]);
+      expect(Array.isArray(loadedServerArgs)).toBe(true);
+      expect(typeof loadedServerPath).toBe("string");
+      expect(await canonicalizePathForAssertion(String(loadedServerPath))).toBe(
+        await canonicalizePathForAssertion(serverPath),
+      );
     } finally {
       env.restore();
     }

@@ -36,7 +36,9 @@ function resolveDefaultLogDir(): string {
 }
 
 export const DEFAULT_LOG_DIR = resolveDefaultLogDir();
-export const DEFAULT_LOG_FILE = path.join(DEFAULT_LOG_DIR, "openclaw.log"); // legacy single-file path
+export const DEFAULT_LOG_FILE = canUseNodeFs()
+  ? path.join(DEFAULT_LOG_DIR, "openclaw.log")
+  : path.posix.join(DEFAULT_LOG_DIR, "openclaw.log"); // legacy single-file path
 
 const LOG_PREFIX = "openclaw";
 const LOG_SUFFIX = ".log";

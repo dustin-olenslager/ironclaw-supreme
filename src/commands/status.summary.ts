@@ -177,8 +177,6 @@ export async function getStatusSummary(
   } = {},
 ): Promise<StatusSummary> {
   const { includeSensitive = true } = options;
-  const { classifySessionKey, resolveContextTokensForModel, resolveSessionModelRef } =
-    await loadStatusSummaryRuntimeModule();
   const cfg = options.config ?? (await loadConfigIoModule()).loadConfig();
   const needsChannelPlugins = hasPotentialConfiguredChannels(cfg);
   const linkContext = needsChannelPlugins
@@ -196,6 +194,50 @@ export async function getStatusSummary(
       everyMs: summary.everyMs,
     } satisfies HeartbeatStatus;
   });
+  const mainSessionKey = resolveMainSessionKey(cfg);
+  const queuedSystemEvents = peekSystemEvents(mainSessionKey);
+  const agentStorePaths = agentList.agents.map((agent) => ({
+    agentId: agent.id,
+    path: resolveStorePath(cfg.session?.store, { agentId: agent.id }),
+  }));
+  const hasAnyStoredSessions = agentStorePaths.some(({ path }) => {
+    const store = readSessionStoreReadOnly(path);
+    return Object.keys(store).some((key) => key !== "global" && key !== "unknown");
+  });
+
+  if (
+    !needsChannelPlugins &&
+    !hasAnyStoredSessions &&
+    queuedSystemEvents.length === 0 &&
+    Object.keys(cfg).length === 0
+  ) {
+    const summary: StatusSummary = {
+      runtimeVersion: resolveRuntimeServiceVersion(process.env),
+      heartbeat: {
+        defaultAgentId: agentList.defaultId,
+        agents: heartbeatAgents,
+      },
+      channelSummary: [],
+      queuedSystemEvents,
+      sessions: {
+        paths: agentStorePaths.map(({ path }) => path),
+        count: 0,
+        defaults: {
+          model: DEFAULT_MODEL,
+          contextTokens: DEFAULT_CONTEXT_TOKENS,
+        },
+        recent: [],
+        byAgent: agentStorePaths.map(({ agentId, path }) => ({
+          agentId,
+          path,
+          count: 0,
+          recent: [],
+        })),
+      },
+    };
+    return includeSensitive ? summary : redactSensitiveStatusSummary(summary);
+  }
+
   const channelSummary = needsChannelPlugins
     ? await loadChannelSummaryModule().then(({ buildChannelSummary }) =>
         buildChannelSummary(cfg, {
@@ -205,8 +247,8 @@ export async function getStatusSummary(
         }),
       )
     : [];
-  const mainSessionKey = resolveMainSessionKey(cfg);
-  const queuedSystemEvents = peekSystemEvents(mainSessionKey);
+  const { classifySessionKey, resolveContextTokensForModel, resolveSessionModelRef } =
+    await loadStatusSummaryRuntimeModule();
 
   const resolved = resolveConfiguredStatusModelRef({
     cfg,
@@ -295,13 +337,12 @@ export async function getStatusSummary(
       .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 
   const paths = new Set<string>();
-  const byAgent = agentList.agents.map((agent) => {
-    const storePath = resolveStorePath(cfg.session?.store, { agentId: agent.id });
+  const byAgent = agentStorePaths.map(({ agentId, path: storePath }) => {
     paths.add(storePath);
     const store = loadStore(storePath);
-    const sessions = buildSessionRows(store, { agentIdOverride: agent.id });
+    const sessions = buildSessionRows(store, { agentIdOverride: agentId });
     return {
-      agentId: agent.id,
+      agentId,
       path: storePath,
       count: sessions.length,
       recent: sessions.slice(0, 10),
