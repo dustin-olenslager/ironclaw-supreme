@@ -55,7 +55,7 @@ vi.mock("../process/exec.js", () => ({
 
 const mockDeliverOutboundPayloads = vi.fn();
 
-vi.mock("../infra/outbound/deliver.js", () => ({
+vi.mock("../infra/outbound/deliver-runtime.js", () => ({
   deliverOutboundPayloads: (...args: unknown[]) => mockDeliverOutboundPayloads(...args),
 }));
 
@@ -148,15 +148,16 @@ describe("applyMediaUnderstanding – echo transcript", () => {
     const baseDir = resolvePreferredOpenClawTmpDir();
     await fs.mkdir(baseDir, { recursive: true });
     suiteTempMediaRootDir = await fs.mkdtemp(path.join(baseDir, TEMP_MEDIA_PREFIX));
+  });
+
+  beforeEach(async () => {
+    vi.resetModules();
+    mockDeliverOutboundPayloads.mockClear();
+    mockDeliverOutboundPayloads.mockResolvedValue([{ channel: "whatsapp", messageId: "echo-1" }]);
     const mod = await import("./apply.js");
     applyMediaUnderstanding = mod.applyMediaUnderstanding;
     const runner = await import("./runner.js");
     clearMediaUnderstandingBinaryCacheForTests = runner.clearMediaUnderstandingBinaryCacheForTests;
-  });
-
-  beforeEach(() => {
-    mockDeliverOutboundPayloads.mockClear();
-    mockDeliverOutboundPayloads.mockResolvedValue([{ channel: "whatsapp", messageId: "echo-1" }]);
     clearMediaUnderstandingBinaryCacheForTests?.();
   });
 
