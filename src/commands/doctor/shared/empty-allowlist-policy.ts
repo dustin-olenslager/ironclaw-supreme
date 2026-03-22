@@ -15,7 +15,12 @@ function usesSenderBasedGroupAllowlist(channelName?: string): boolean {
   }
   // These channels enforce group access via channel/space config, not sender-based
   // groupAllowFrom lists.
-  return !(channelName === "discord" || channelName === "slack" || channelName === "googlechat");
+  return !(
+    channelName === "discord" ||
+    channelName === "slack" ||
+    channelName === "googlechat" ||
+    channelName === "zalouser"
+  );
 }
 
 function allowsGroupAllowFromFallback(channelName?: string): boolean {
@@ -26,7 +31,6 @@ function allowsGroupAllowFromFallback(channelName?: string): boolean {
   return !(
     channelName === "googlechat" ||
     channelName === "imessage" ||
-    channelName === "zalouser" ||
     channelName === "matrix" ||
     channelName === "msteams" ||
     channelName === "irc"
